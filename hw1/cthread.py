@@ -46,7 +46,10 @@ class ClientThread(threading.Thread):
             return "Please login first."
     
     def run(self):
-        msg = "% "
+        msg = "********************************\r\n" \
+                "** Welcome to the BBS server. **\r\n" \
+                "********************************\r\n" \
+                "% "
         self.c_socket.send(bytes(msg,'UTF-8'))
         
         while True:

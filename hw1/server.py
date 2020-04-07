@@ -1,9 +1,12 @@
 import sys
 import socket
 import threading
+import db
 from cthread import ClientThread
 
 PORT = 7788
+
+db.create_table()
 
 if len(sys.argv) == 2:
     PORT = int(sys.argv[1])
