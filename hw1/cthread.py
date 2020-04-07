@@ -10,7 +10,6 @@ class ClientThread(threading.Thread):
         self.c_address = c_address_
         self.logged_in = False
         self.username = ""
-        # print ("New connection added: ", self.c_address)
 
     def regisiter(self, username, email, password):
         action = db.insert_user(username, email, password)
@@ -46,41 +45,31 @@ class ClientThread(threading.Thread):
             return "Please login first."
     
     def run(self):
-        # print ("Connection from : ", self.c_address)
         msg = "% "
         self.c_socket.send(bytes(msg,'UTF-8'))
+        
         while True:
-            msg = ""
+            msg = "% "
             data = self.c_socket.recv(2048)
-            imput = data.decode()
-            argv = re.split(" |\r\n", imput)
+            user_input = data.decode()
+            argv = re.split(" |\r\n", user_input)
 
             if argv[0] == "register":
                 if len(argv) == 5:
-                    msg = self.regisiter(argv[1], argv[2], argv[3])
+                    msg = self.regisiter(argv[1], argv[2], argv[3]) + "\r\n% "
                 else:
-                    msg = "Usage: register <username> <email> <password>"
+                    msg = "Usage: register <username> <email> <password>\r\n% "
             elif argv[0] == "login":
                 if len(argv) == 4:
-                    msg = self.login(argv[1], argv[2])
+                    msg = self.login(argv[1], argv[2]) + "\r\n% "
                 else:
-                    msg = "Usage: login <username> <password>"
+                    msg = "Usage: login <username> <password>\r\n% "
             elif argv[0] == "logout":
-                msg = self.logout()
+                msg = self.logout() + "\r\n% "
             elif argv[0] == "whoami":
-                msg = self.whoami()
+                msg = self.whoami() + "\r\n% "
             elif argv[0] == "exit":
                 self.c_socket.close()
                 return
-            
-            
-            # if "bye" in msg:
-            #     self.c_socket.close()
-            #     break
-            # print ("from client", msg)
-            msg += "\r\n% "
+
             self.c_socket.send(bytes(msg,'UTF-8'))
-        
-
-
-        # print ("Client at ", self.c_address , " disconnected...")
