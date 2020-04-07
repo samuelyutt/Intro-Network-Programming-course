@@ -10,6 +10,7 @@ class ClientThread(threading.Thread):
         self.c_address = c_address_
         self.logged_in = False
         self.username = ""
+        print("New connection.")
 
     def regisiter(self, username, email, password):
         action = db.insert_user(username, email, password)
@@ -49,27 +50,29 @@ class ClientThread(threading.Thread):
         self.c_socket.send(bytes(msg,'UTF-8'))
         
         while True:
-            msg = "% "
+            msg = ""
             data = self.c_socket.recv(2048)
             user_input = data.decode()
             argv = re.split(" |\r\n", user_input)
 
             if argv[0] == "register":
                 if len(argv) == 5:
-                    msg = self.regisiter(argv[1], argv[2], argv[3]) + "\r\n% "
+                    msg = self.regisiter(argv[1], argv[2], argv[3])
                 else:
-                    msg = "Usage: register <username> <email> <password>\r\n% "
+                    msg = "Usage: register <username> <email> <password>"
             elif argv[0] == "login":
                 if len(argv) == 4:
-                    msg = self.login(argv[1], argv[2]) + "\r\n% "
+                    msg = self.login(argv[1], argv[2])
                 else:
-                    msg = "Usage: login <username> <password>\r\n% "
+                    msg = "Usage: login <username> <password>"
             elif argv[0] == "logout":
-                msg = self.logout() + "\r\n% "
+                msg = self.logout()
             elif argv[0] == "whoami":
-                msg = self.whoami() + "\r\n% "
+                msg = self.whoami()
             elif argv[0] == "exit":
                 self.c_socket.close()
                 return
+
+            msg = "% " if msg == "" else msg + "\r\n% "
 
             self.c_socket.send(bytes(msg,'UTF-8'))
