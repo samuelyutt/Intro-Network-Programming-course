@@ -6,7 +6,7 @@ from cthread import ClientThread
 
 PORT = 7788
 
-db.create_table()
+db.create_table_users()
 
 if len(sys.argv) == 2:
     PORT = int(sys.argv[1])
