@@ -12,7 +12,7 @@ def login_check(username, password):
     conn.close()
     return int(values[0]) > 0
 
-def delete_post_check(pid, username):
+def modify_post_check(pid, username):
     conn = sqlite3.connect('bbs.db')
     c = conn.cursor()
     params = (pid, )
@@ -27,8 +27,23 @@ def delete_post_check(pid, username):
     else:
         return 0
 
+def update_post(pid, username, title_or_content, change):
+    check_err = modify_post_check(pid, username)
+    if not check_err:
+        conn = sqlite3.connect('bbs.db')
+        c = conn.cursor()
+        cursor = None
+        params = (change, pid, username, )
+        if title_or_content == "--title":
+            cursor = c.execute("UPDATE POSTS SET title = ? WHERE pid == ? AND author == ?", params)
+        elif title_or_content == "--content":
+            cursor = c.execute("UPDATE POSTS SET content = ? WHERE pid == ? AND author == ?", params)
+        conn.commit()
+        conn.close()
+    return check_err
+
 def delete_post(pid, username):
-    check_err = delete_post_check(pid, username)
+    check_err = modify_post_check(pid, username)
     if not check_err:
         conn = sqlite3.connect('bbs.db')
         c = conn.cursor()
@@ -36,7 +51,6 @@ def delete_post(pid, username):
         cursor = c.execute("DELETE FROM POSTS WHERE pid == ? AND author == ?", params)
         conn.commit()
         conn.close()
-    print(check_err)
     return check_err
 
 def create_table_users():
@@ -84,7 +98,25 @@ def create_table_posts():
                 title       TEXT    NOT NULL,
                 post_date   TEXT    NOT NULL,
                 content     TEXT    NOT NULL,
-                FOREIGN KEY(board_id)  REFERENCES BOARDS(bid)
+                FOREIGN KEY(board_id) REFERENCES BOARDS(bid)
+            );
+        ''')
+        conn.commit()
+        conn.close()
+    except:
+        pass
+
+def create_table_comments():
+    try:    
+        conn = sqlite3.connect('bbs.db')
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE COMMENTS(
+                cid         INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id     INTEGER NOT NULL,
+                user        TEXT    NOT NULL,
+                comment     TEXT    NOT NULL,
+                FOREIGN KEY(post_id)  REFERENCES POSTS(pid)
             );
         ''')
         conn.commit()
@@ -149,6 +181,33 @@ def insert_post(bid, author, title, content):
     else:
         return 1
 
+def post_existed_check(pid):
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    params = (pid,)
+    cursor = c.execute("SELECT COUNT(*) FROM POSTS p WHERE p.pid == ?", params)
+    values = cursor.fetchone()
+    conn.commit()
+    conn.close()
+    return int(values[0]) > 0
+
+def insert_comment(pid, user, comment):
+    # Return 0 if successfully inserted
+    if post_existed_check(pid):
+        try:
+            conn = sqlite3.connect('bbs.db')
+            c = conn.cursor()
+            params = (pid, user, comment,)
+            cursor = c.execute("INSERT INTO COMMENTS (post_id, user, comment) VALUES (?, ?, ?)", params)
+            conn.commit()
+            conn.close()
+            return 0
+        except:
+            pass
+        return -1
+    else:
+        return 2
+
 def select_board(key = ""):
     ret = []
     conn = sqlite3.connect('bbs.db')
@@ -185,6 +244,17 @@ def select_post(bid = -1, key = "", pid = -1):
     conn.close()
     return ret
 
+def select_comment(pid):    
+    ret = []
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()    
+    params = (pid,)
+    cursor = c.execute("SELECT * FROM COMMENTS WHERE post_id = ?", params)        
+    ret = cursor.fetchall()
+    conn.commit()
+    conn.close()
+    return ret
+
 
 def test():
     conn = sqlite3.connect('bbs.db')
@@ -204,6 +274,13 @@ def test():
     cursor = c.execute("SELECT * FROM POSTS")
     for a in cursor:
         print(a)
+        conn2 = sqlite3.connect('bbs.db')
+        c2 = conn2.cursor()
+        cursor2 = c2.execute("SELECT * FROM COMMENTS WHERE post_id = ?", (a[0],))
+        for b in cursor2:
+            print("    ", b)
+        conn2.commit()
+        conn2.close()
 
     conn.commit()
     conn.close()
@@ -214,6 +291,7 @@ if __name__ == '__main__':
     create_table_users()
     create_table_boards()
     create_table_posts()
+    create_table_comments()
     # test()
     insert_user("u1", "1@1", "111")
     insert_user("u2", "1@1", "111")
@@ -235,9 +313,35 @@ if __name__ == '__main__':
     #     print(a)
 
     # delete_post(1, "execute")
-    insert_post(2, "u1", "t4", "c4")
-    insert_post(1, "u1", "t4", "c4")
-    insert_post(23, "u1", "t4", "c4")
+    # insert_post(2, "u1", "t4", "c4")
+    # insert_post(1, "u1", "t4", "c4")
+    # insert_post(23, "u1", "t4", "c4")
+    # update_post(pid=3, username="u1", title_or_content="--title", change="new1")
+    # update_post(pid=3, username="u4", title_or_content="--title", change="new2")
+    # update_post(pid=3, username="u4", title_or_content="--content", change="new3")
+    # update_post(pid=3, username="u4", title_or_content="--title", change="new4")
+    # update_post(pid=3, username="u2", title_or_content="--title", change="new5")
+    insert_comment(pid=1, user="u1", comment="111")
+    insert_comment(pid=1, user="u2", comment="222")
+    insert_comment(pid=3, user="u3", comment="333")
+    insert_comment(pid=3, user="u4", comment="444")
+    insert_comment(pid=4, user="u5", comment="555")
+    insert_comment(pid=6, user="u6", comment="666")
     test()
+
+    print("COMMENTS")
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    cursor = c.execute("SELECT * FROM COMMENTS")
+    for a in cursor:
+        print(a)
+    conn.commit()
+    conn.close()
+
+    print(select_comment(pid=3))
+    print(select_comment(pid=4))
+    print(select_comment(pid=5))
+    print(select_comment(pid=6))
+
     # print(insert_user("test", "test@email", "pass"))  
     # print(login_check("test", "pass"))
