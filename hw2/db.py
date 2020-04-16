@@ -138,13 +138,13 @@ def insert_user(username, email, password):
         pass
     return 1
 
-def insert_board(name, moderator):
+def insert_board(moderator, name):
     # Return 0 if successfully inserted
     try:
         conn = sqlite3.connect('bbs.db')
         c = conn.cursor()
-        params = (name, moderator,)
-        cursor = c.execute("INSERT INTO BOARDS (name, moderator) VALUES (?, ?)", params)
+        params = (moderator, name,)
+        cursor = c.execute("INSERT INTO BOARDS (moderator, name) VALUES (?, ?)", params)
         conn.commit()
         conn.close()
         return 0
@@ -286,6 +286,11 @@ def test():
     conn.close()
     return
 
+def create_all_tables():
+    create_table_users()
+    create_table_boards()
+    create_table_posts()
+    create_table_comments()
 
 if __name__ == '__main__':       
     create_table_users()
@@ -321,27 +326,27 @@ if __name__ == '__main__':
     # update_post(pid=3, username="u4", title_or_content="--content", change="new3")
     # update_post(pid=3, username="u4", title_or_content="--title", change="new4")
     # update_post(pid=3, username="u2", title_or_content="--title", change="new5")
-    insert_comment(pid=1, user="u1", comment="111")
-    insert_comment(pid=1, user="u2", comment="222")
-    insert_comment(pid=3, user="u3", comment="333")
-    insert_comment(pid=3, user="u4", comment="444")
-    insert_comment(pid=4, user="u5", comment="555")
-    insert_comment(pid=6, user="u6", comment="666")
-    test()
+    # insert_comment(pid=1, user="u1", comment="111")
+    # insert_comment(pid=1, user="u2", comment="222")
+    # insert_comment(pid=3, user="u3", comment="333")
+    # insert_comment(pid=3, user="u4", comment="444")
+    # insert_comment(pid=4, user="u5", comment="555")
+    # insert_comment(pid=6, user="u6", comment="666")
+    # test()
 
-    print("COMMENTS")
-    conn = sqlite3.connect('bbs.db')
-    c = conn.cursor()
-    cursor = c.execute("SELECT * FROM COMMENTS")
-    for a in cursor:
-        print(a)
-    conn.commit()
-    conn.close()
+    # print("COMMENTS")
+    # conn = sqlite3.connect('bbs.db')
+    # c = conn.cursor()
+    # cursor = c.execute("SELECT * FROM COMMENTS")
+    # for a in cursor:
+    #     print(a)
+    # conn.commit()
+    # conn.close()
 
-    print(select_comment(pid=3))
-    print(select_comment(pid=4))
-    print(select_comment(pid=5))
-    print(select_comment(pid=6))
+    # print(select_comment(pid=3))
+    # print(select_comment(pid=4))
+    # print(select_comment(pid=5))
+    # print(select_comment(pid=6))
 
     # print(insert_user("test", "test@email", "pass"))  
     # print(login_check("test", "pass"))
