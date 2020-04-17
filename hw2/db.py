@@ -93,12 +93,11 @@ def create_table_posts():
         c.execute('''
             CREATE TABLE POSTS(
                 pid         INTEGER PRIMARY KEY AUTOINCREMENT,
-                board_id    INTEGER NOT NULL,
+                boardname   TEXT    NOT NULL,
                 author      TEXT    NOT NULL,
                 title       TEXT    NOT NULL,
                 post_date   TEXT    NOT NULL,
-                content     TEXT    NOT NULL,
-                FOREIGN KEY(board_id) REFERENCES BOARDS(bid)
+                content     TEXT    NOT NULL
             );
         ''')
         conn.commit()
@@ -152,26 +151,26 @@ def insert_board(moderator, name):
         pass
     return 1
 
-def board_existed_check(bid):
+def board_existed_check(boardname):
     conn = sqlite3.connect('bbs.db')
     c = conn.cursor()
-    params = (bid,)
-    cursor = c.execute("SELECT COUNT(*) FROM BOARDS b WHERE b.bid == ?", params)
+    params = (boardname,)
+    cursor = c.execute("SELECT COUNT(*) FROM BOARDS b WHERE b.name == ?", params)
     values = cursor.fetchone()
     conn.commit()
     conn.close()
     return int(values[0]) > 0
 
-def insert_post(bid, author, title, content):
+def insert_post(boardname, author, title, content):
     # Return 0 if successfully inserted
-    if board_existed_check(bid):
+    if board_existed_check(boardname):
         try:
             conn = sqlite3.connect('bbs.db')
             c = conn.cursor()
             cursor = c.execute("SELECT date('now')")
             post_date = cursor.fetchone()[0]
-            params = (bid, author, title, post_date, content,)
-            cursor = c.execute("INSERT INTO POSTS (board_id, author, title, post_date, content) VALUES (?, ?, ?, ?, ?)", params)
+            params = (boardname, author, title, post_date, content,)
+            cursor = c.execute("INSERT INTO POSTS (boardname, author, title, post_date, content) VALUES (?, ?, ?, ?, ?)", params)
             conn.commit()
             conn.close()
             return 0
@@ -223,18 +222,18 @@ def select_board(key = ""):
     conn.close()
     return ret
 
-def select_post(bid = -1, key = "", pid = -1):    
+def select_post(boardname = "", key = "", pid = -1):    
     ret = []
     conn = sqlite3.connect('bbs.db')
     c = conn.cursor()
     cursor = None
-    if bid != -1:
+    if boardname != "":
         if key == "":
-            params = (bid,)
-            cursor = c.execute("SELECT pid, author, title, post_date, content FROM POSTS p WHERE p.board_id == ?", params)
+            params = (boardname,)
+            cursor = c.execute("SELECT pid, title, author, post_date FROM POSTS p WHERE p.boardname == ?", params)
         else:
-            params = (bid, "%" + key + "%",)
-            cursor = c.execute("SELECT pid, author, title, post_date, content FROM POSTS p WHERE p.board_id == ? AND p.title LIKE ?", params)
+            params = (boardname, "%" + key + "%",)
+            cursor = c.execute("SELECT pid, title, author, post_date FROM POSTS p WHERE p.boardname == ? AND p.title LIKE ?", params)
         ret = cursor.fetchall()
     elif pid != -1:
         params = (pid,)
