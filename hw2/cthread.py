@@ -111,7 +111,7 @@ class ClientThread(threading.Thread):
             return "Board does not exist."
 
     def list_board(self):
-        header = "Index\tName\t\tModerator"
+        header = "    Index   Name            Moderator"
         data = ""
         key = ""
         if len(self.argv) == 2:
@@ -120,8 +120,10 @@ class ClientThread(threading.Thread):
             else:
                 return self.usage()
         results = db.select_board(key)
+        i = 1
         for row in results:
-            data += "\r\n{}\t{}\t\t{}".format(row[0], row[2], row[1])
+            data += "\r\n    {}{}{}".format(str(i).ljust(8, ' '), row[2].ljust(16, ' '), row[1])
+            i += 1
         return header + data
 
     def list_post(self):
@@ -129,7 +131,7 @@ class ClientThread(threading.Thread):
         if not db.board_existed_check(boardname):
             return "Board does not exist."
         
-        header = "ID\tTitle\t\tAuthor\t\tDate"
+        header = "    ID      Title           Author          Date"
         data = ""
         key = ""
         if len(self.argv) == 3:
@@ -139,7 +141,7 @@ class ClientThread(threading.Thread):
                 return self.usage()
         results = db.select_post(boardname = boardname, key = key)
         for row in results:
-            data += "\r\n{}\t{}\t\t{}\t\t{}".format(row[0], row[1], row[2], row[3][5:7]+'/'+row[3][8:10])
+            data += "\r\n    {}{}{}{}".format(str(row[0]).ljust(8, ' '), row[1].ljust(16, ' '), row[2].ljust(16, ' '), row[3][5:7]+'/'+row[3][8:10])
         return header + data
 
     def read_post(self):
@@ -149,15 +151,55 @@ class ClientThread(threading.Thread):
 
         post = ""
         result = db.select_post(pid = pid)
-        post = "Author\t:{}\r\nTitle\t:{}\r\nDate\t:{}\r\n--\r\n{}\r\n--".format(result[0][0], result[0][1], result[0][2], result[0][3])      
-
+        content = result[0][3].replace("\r\n", "\r\n    ")
+        post = "    Author\t:{}\r\n    Title\t:{}\r\n    Date\t:{}\r\n    --\r\n    {}\r\n    --".format(result[0][0], result[0][1], result[0][2], content)      
         comments = ""
         results = db.select_comment(pid = pid)
         for row in results:
-            comments += "\r\n{}: {}".format(row[1], row[2])
-
-
+            comments += "\r\n    {}: {}".format(row[2], row[3])
         return post + comments
+
+    def delete_post(self):
+        pid = int(self.argv[1])
+        action = db.delete_post(pid, self.username)
+        if action == 0:
+            return "Delete successfully."
+        elif action == 2:
+            return "Post does not exist."
+        else:
+            return "Not the post owner."
+
+    def update_post(self):
+        pid = int(self.argv[1])
+        title_or_content = self.argv[2]
+        argi = 3
+        change = ""
+        while argi < len(self.argv):
+            change = self.argv[argi] if change == "" else change + " " + self.argv[argi]
+            argi += 1
+        if title_or_content != "--title" and title_or_content != "--content":
+            return self.usage()
+        elif title_or_content == "--content":
+            change = change.replace("<br>", "\r\n")
+        action = db.update_post(pid, self.username, title_or_content, change)
+        if action == 0:
+            return "Update successfully."
+        elif action == 2:
+            return "Post does not exist."
+        else:
+            return "Not the post owner."
+
+    def comment(self):
+        pid = int(self.argv[1])
+        comment = ""
+        argi = 2
+        while argi < len(self.argv):
+            comment = self.argv[argi] if comment == "" else comment + " " + self.argv[argi]
+            argi += 1
+        if db.insert_comment(pid, self.username, comment) == 0:
+            return "Comment successfully."
+        else:
+            return "Post does not exist."
         
     def run(self):
         msg = "********************************\r\n" \
@@ -172,7 +214,7 @@ class ClientThread(threading.Thread):
             # self.argv = re.split(" |\r\n", user_input)
             self.argv = user_input.split()
             argc = len(self.argv)
-            action = self.argv[0]
+            action = self.argv[0] if argc > 0 else ""
 
             if "exit" == action:
                 self.c_socket.close()

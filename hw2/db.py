@@ -38,6 +38,8 @@ def update_post(pid, username, title_or_content, change):
             cursor = c.execute("UPDATE POSTS SET title = ? WHERE pid == ? AND author == ?", params)
         elif title_or_content == "--content":
             cursor = c.execute("UPDATE POSTS SET content = ? WHERE pid == ? AND author == ?", params)
+        else:
+            check_err = 4
         conn.commit()
         conn.close()
     return check_err
@@ -291,17 +293,18 @@ def create_all_tables():
     create_table_posts()
     create_table_comments()
 
-if __name__ == '__main__':       
-    create_table_users()
-    create_table_boards()
-    create_table_posts()
-    create_table_comments()
+if __name__ == '__main__':
+    create_all_tables()
+    # create_table_users()
+    # create_table_boards()
+    # create_table_posts()
+    # create_table_comments()
     # test()
-    insert_user("u1", "1@1", "111")
-    insert_user("u2", "1@1", "111")
-    insert_board("b1", "u1")
-    insert_board("b2", "u2")
-    insert_board("b3", "u3--illegal")
+    # insert_user("u1", "1@1", "111")
+    # insert_user("u2", "1@1", "111")
+    # insert_board("b1", "u1")
+    # insert_board("b2", "u2")
+    # insert_board("b3", "u3--illegal")
     # insert_post(1, "u1", "t1", "c1")
     # insert_post(2, "u1", "t2", "c2")
     # insert_post(3, "u4", "t3", "c3")
