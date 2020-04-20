@@ -218,6 +218,7 @@ def select_board(key = ""):
         cursor = c.execute("SELECT * FROM BOARDS b")
     else:
         params = ("%" + key + "%",)
+        cursor = c.execute("PRAGMA case_sensitive_like = true")
         cursor = c.execute("SELECT * FROM BOARDS b WHERE b.name LIKE ?", params)
     ret = cursor.fetchall()
     conn.commit()
@@ -235,6 +236,7 @@ def select_post(boardname = "", key = "", pid = -1):
             cursor = c.execute("SELECT pid, title, author, post_date FROM POSTS p WHERE p.boardname == ?", params)
         else:
             params = (boardname, "%" + key + "%",)
+            cursor = c.execute("PRAGMA case_sensitive_like = true")
             cursor = c.execute("SELECT pid, title, author, post_date FROM POSTS p WHERE p.boardname == ? AND p.title LIKE ?", params)
         ret = cursor.fetchall()
     elif pid != -1:
