@@ -19,6 +19,12 @@ class ClientThread(threading.Thread):
             return "Usage: register <username> <email> <password>"
         elif "login" == action:
             return "Usage: login <username> <password>"
+        elif "list-board" == action:
+            return "Usage: list-board ##<key>"
+        elif "list-post" == action:
+            return "Usage: list-post <board-name> ##<key>"
+        elif "read" == action:
+            return "Usage: read <post-id>"        
         
         elif not self.logged_in:
             return "Please login first."
@@ -27,12 +33,6 @@ class ClientThread(threading.Thread):
             return "Usage: create-board <name>"
         elif "create-post" == action:
             return "Usage: create-post <board-name> --title <title> --content <content>"
-        elif "list-board" == action:
-            return "Usage: list-board ##<key>"
-        elif "list-post" == action:
-            return "Usage: list-post <board-name> ##<key>"
-        elif "read" == action:
-            return "Usage: read <post-id>"
         elif "delete-post" == action:
             return "Usage: delete-post <post-id>"
         elif "update-post" == action:
@@ -232,11 +232,11 @@ class ClientThread(threading.Thread):
             elif "create-post" == action:
                 msg = self.create_post() if argc >= 6 and self.logged_in else self.usage()
             elif "list-board" == action:
-                msg = self.list_board() if argc <= 2 and self.logged_in else self.usage()
+                msg = self.list_board() if argc <= 2 else self.usage()
             elif "list-post" == action:
-                msg = self.list_post() if 2 <= argc <= 3 and self.logged_in else self.usage()
+                msg = self.list_post() if 2 <= argc <= 3 else self.usage()
             elif "read" == action:
-                msg = self.read_post() if argc == 2 and self.logged_in else self.usage()
+                msg = self.read_post() if argc == 2 else self.usage()
             elif "delete-post" == action:
                 msg = self.delete_post() if argc == 2 and self.logged_in else self.usage()
             elif "update-post" == action:
