@@ -1,3 +1,5 @@
+import boto3, time
+import random, string
 import sqlite3
 
 
@@ -11,6 +13,27 @@ def login_check(username, password):
     conn.commit()
     conn.close()
     return int(values[0]) > 0
+
+def get_bucket(username):
+    # Return True if password matches username
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    params = (username,)
+    cursor = c.execute("SELECT bucket FROM USERS u WHERE u.username == ?", params)
+    values = cursor.fetchone()
+    conn.commit()
+    conn.close()
+    return values[0]
+
+def get_post_object_name(pid):
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    params = (pid,)
+    cursor = c.execute("SELECT object FROM POSTS p WHERE p.pid == ?", params)
+    values = cursor.fetchone()
+    conn.commit()
+    conn.close()
+    return values[0]
 
 def modify_post_check(pid, username):
     conn = sqlite3.connect('bbs.db')
@@ -30,23 +53,37 @@ def modify_post_check(pid, username):
 def update_post(pid, username, title_or_content, change):
     check_err = modify_post_check(pid, username)
     if not check_err:
-        conn = sqlite3.connect('bbs.db')
-        c = conn.cursor()
-        cursor = None
-        params = (change, pid, username, )
         if title_or_content == "--title":
+            conn = sqlite3.connect('bbs.db')
+            c = conn.cursor()
+            params = (change, pid, username, )
             cursor = c.execute("UPDATE POSTS SET title = ? WHERE pid == ? AND author == ?", params)
+            conn.commit()
+            conn.close()
         elif title_or_content == "--content":
-            cursor = c.execute("UPDATE POSTS SET content = ? WHERE pid == ? AND author == ?", params)
+            # cursor = c.execute("UPDATE POSTS SET content = ? WHERE pid == ? AND author == ?", params)
+            bucket = get_bucket(username)
+            object_name = get_post_object_name(pid)
+            file = open('./tmp/' + object_name, 'w')
+            file.write(change)
+            file.close()
+            s3 = boto3.resource('s3')
+            target_bucket = s3.Bucket(bucket)
+            target_bucket.upload_file('./tmp/' + object_name, object_name)
         else:
             check_err = 4
-        conn.commit()
-        conn.close()
     return check_err
 
 def delete_post(pid, username):
     check_err = modify_post_check(pid, username)
     if not check_err:
+        bucket = get_bucket(username)
+        object_name = get_post_object_name(pid)
+        s3 = boto3.resource('s3')
+        target_bucket = s3.Bucket(bucket)
+        target_object = target_bucket.Object(object_name)
+        target_object.delete()
+
         conn = sqlite3.connect('bbs.db')
         c = conn.cursor()
         params = (pid, username, )
@@ -64,7 +101,8 @@ def create_table_users():
                 uid         INTEGER PRIMARY KEY AUTOINCREMENT,
                 username    TEXT    NOT NULL UNIQUE,
                 email       TEXT    NOT NULL,
-                password    TEXT    NOT NULL
+                password    TEXT    NOT NULL,
+                bucket      TEXT    NOT NULL
             );
         ''')
         conn.commit()
@@ -99,7 +137,8 @@ def create_table_posts():
                 author      TEXT    NOT NULL,
                 title       TEXT    NOT NULL,
                 post_date   TEXT    NOT NULL,
-                content     TEXT    NOT NULL
+                content     TEXT    NOT NULL, 
+                object      TEXT    NOT NULL
             );
         ''')
         conn.commit()
@@ -125,13 +164,13 @@ def create_table_comments():
     except:
         pass
 
-def insert_user(username, email, password):
+def insert_user(username, email, password, bucket):
     # Return 0 if successfully inserted
     try:
         conn = sqlite3.connect('bbs.db')
         c = conn.cursor()
-        params = (username, email, password,)
-        cursor = c.execute("INSERT INTO USERS (username, email, password) VALUES (?, ?, ?)", params)
+        params = (username, email, password, bucket)
+        cursor = c.execute("INSERT INTO USERS (username, email, password, bucket) VALUES (?, ?, ?, ?)", params)
         conn.commit()
         conn.close()
         return 0
@@ -163,7 +202,7 @@ def board_existed_check(boardname):
     conn.close()
     return int(values[0]) > 0
 
-def insert_post(boardname, author, title, content):
+def insert_post(boardname, author, title, content, object_name):
     # Return 0 if successfully inserted
     if board_existed_check(boardname):
         try:
@@ -171,8 +210,8 @@ def insert_post(boardname, author, title, content):
             c = conn.cursor()
             cursor = c.execute("SELECT date('now')")
             post_date = cursor.fetchone()[0]
-            params = (boardname, author, title, post_date, content,)
-            cursor = c.execute("INSERT INTO POSTS (boardname, author, title, post_date, content) VALUES (?, ?, ?, ?, ?)", params)
+            params = (boardname, author, title, post_date, content, object_name,)
+            cursor = c.execute("INSERT INTO POSTS (boardname, author, title, post_date, content, object) VALUES (?, ?, ?, ?, ?, ?)", params)
             conn.commit()
             conn.close()
             return 0
@@ -241,7 +280,7 @@ def select_post(boardname = "", key = "", pid = -1):
         ret = cursor.fetchall()
     elif pid != -1:
         params = (pid,)
-        cursor = c.execute("SELECT author, title, post_date, content FROM POSTS p WHERE p.pid == ?", params)
+        cursor = c.execute("SELECT author, title, post_date, object FROM POSTS p WHERE p.pid == ?", params)
         ret = cursor.fetchall()
     conn.commit()
     conn.close()
