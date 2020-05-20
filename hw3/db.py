@@ -141,17 +141,18 @@ def create_table_posts():
     except:
         pass
 
-def create_table_comments():
+def create_table_mails():
     try:    
         conn = sqlite3.connect('bbs.db')
         c = conn.cursor()
         c.execute('''
-            CREATE TABLE COMMENTS(
-                cid         INTEGER PRIMARY KEY AUTOINCREMENT,
-                post_id     INTEGER NOT NULL,
-                user        TEXT    NOT NULL,
-                comment     TEXT    NOT NULL,
-                FOREIGN KEY(post_id)  REFERENCES POSTS(pid)
+            CREATE TABLE MAILS(
+                mid         INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender      TEXT    NOT NULL,
+                receiver    TEXT    NOT NULL,
+                subject     TEXT    NOT NULL,
+                mail_date   TEXT    NOT NULL,
+                object      TEXT    NOT NULL
             );
         ''')
         conn.commit()
@@ -172,6 +173,16 @@ def insert_user(username, email, password, bucket):
     except:
         pass
     return 1
+
+def user_existed_check(username):
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    params = (username,)
+    cursor = c.execute("SELECT COUNT(*) FROM USERS u WHERE u.username == ?", params)
+    values = cursor.fetchone()
+    conn.commit()
+    conn.close()
+    return int(values[0]) > 0
 
 def insert_board(moderator, name):
     # Return 0 if successfully inserted
@@ -236,6 +247,32 @@ def insert_comment(pid):
     conn.close()
     return ret
 
+def insert_mail(sender, receiver, subject, object_name):
+    if user_existed_check(receiver):
+        try:
+            conn = sqlite3.connect('bbs.db')
+            c = conn.cursor()
+            cursor = c.execute("SELECT date('now')")
+            mail_date = cursor.fetchone()[0]
+            params = (sender, receiver, subject, mail_date, object_name)
+            cursor = c.execute("INSERT INTO MAILS (sender, receiver, subject, mail_date, object) VALUES (?, ?, ?, ?, ?)", params)
+            conn.commit()
+            conn.close()
+            return 0
+        except:
+            pass
+        return -1
+    else:
+        return 1
+
+def delete_mail(mid):
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    params = (mid,)
+    cursor = c.execute("DELETE FROM MAILS WHERE mid == ?", params)
+    conn.commit()
+    conn.close()
+
 def select_board(key = ""):
     ret = []
     conn = sqlite3.connect('bbs.db')
@@ -270,6 +307,19 @@ def select_post(boardname = "", key = "", pid = -1):
         params = (pid,)
         cursor = c.execute("SELECT author, title, post_date, object, cmt_object FROM POSTS p WHERE p.pid == ?", params)
         ret = cursor.fetchall()
+    conn.commit()
+    conn.close()
+    return ret
+
+def select_mail(receiver = ""):    
+    ret = []
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    cursor = None
+    params = (receiver,)
+    cursor = c.execute("PRAGMA case_sensitive_like = true")
+    cursor = c.execute("SELECT subject, sender, mail_date, object, mid FROM MAILS m WHERE m.receiver == ?", params)
+    ret = cursor.fetchall()
     conn.commit()
     conn.close()
     return ret
@@ -320,7 +370,7 @@ def create_all_tables():
     create_table_users()
     create_table_boards()
     create_table_posts()
-    create_table_comments()
+    create_table_mails()
 
 if __name__ == '__main__':
     create_all_tables()

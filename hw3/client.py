@@ -110,7 +110,43 @@ while data != 'exit':
         file.close()
         target_bucket = s3.Bucket(bucket)
         target_bucket.upload_file('./tmp/' + comment_object_name, comment_object_name)
+    elif '&<!mail-to>' in msg:
+        msg = msg.split('&<!mail-to>')[1]
+        matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
+        msg = msg.split('&<!meta|msg>')[1]
 
+        bucket = matadata[0]
+        object_name = matadata[1]
+        content = matadata[2]
+
+        file = open('./tmp/' + object_name, 'w')
+        file.write(content)
+        file.close()
+        target_bucket = s3.Bucket(bucket)
+        target_bucket.upload_file('./tmp/' + object_name, object_name)
+    elif '&<!retr-mail::>' in msg:
+        msg = msg.split('&<!retr-mail::>')[1]
+        matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
+        msg = msg.split('&<!meta|msg>')[1]
+
+        bucket = matadata[0]
+        object_name = matadata[1]
+
+        target_bucket = s3.Bucket(bucket)
+        target_object = target_bucket.Object(object_name)
+        object_content = target_object.get()['Body'].read().decode()
+        msg += object_content
+    elif '&<!delete-mail::>' in msg:
+        msg = msg.split('&<!delete-mail::>')[1]
+        matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
+        msg = msg.split('&<!meta|msg>')[1]
+
+        bucket = matadata[0]
+        object_name = matadata[1]
+
+        target_bucket = s3.Bucket(bucket)
+        target_object = target_bucket.Object(object_name)
+        target_object.delete()
     
     if msg != ' ':
         print(msg)

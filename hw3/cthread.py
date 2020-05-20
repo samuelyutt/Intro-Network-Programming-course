@@ -42,13 +42,19 @@ class ClientThread(threading.Thread):
             return "Usage: update-post <post-id> --title/content <new>"
         elif "comment" == action:
             return "Usage: comment <post-id> <comment>"
+        elif 'mail-to' == action:
+            return 'Usage: mail-to <username> --subject <subject> --content <content>'
+        elif 'retr-mail' == action:
+            return 'Usage: retr-mail <mail#>'
+        elif 'delete-mail' == action:
+            return 'Usage: delete-mail <mail#>'
         return ""
 
     def regisiter(self):
         username = self.argv[1]
         email = self.argv[2]
         password = self.argv[3]
-        bucket = 'nphw0616026user' + str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8))
+        bucket = 'nphw0616026user' + str(int(time.time()*100000)) + ''.join(random.choice(string.ascii_lowercase) for i in range(8))
         if db.insert_user(username, email, password, bucket) == 0:
             return '&<!register::>' + bucket + "&<!meta|msg>Register successfully."
         else:
@@ -220,6 +226,81 @@ class ClientThread(threading.Thread):
         comment_object_name = result[1]
         return '&<!comment>' + bucket + '&<!spl>' + comment_object_name + '&<!spl>' + comment + '&<!meta|msg>Comment successfully.'
         
+    def mail_to(self):
+        receiver = ""
+        subject = ""
+        content = ""        
+        argc = len(self.argv)        
+        status = 0
+        
+        for arg in self.argv:
+            if 0 == status:
+                status = 1
+            elif 1 == status:
+                if arg == "--subject":
+                    status = 2
+                else:
+                    receiver = arg
+            elif 2 == status:
+                if arg == "--content":
+                    status = 3
+                else:
+                    subject = arg if subject == "" else subject + " " + arg
+            elif 3 == status:
+                content = arg if content == "" else content + " " + arg
+        content = content.replace("<br>", "\r\n")
+        object_name = 'mail' + str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8)) + '.txt'
+
+        if status != 3 or receiver == "":
+            return self.usage()        
+        elif db.insert_mail(self.username, receiver, subject, object_name) == 0:
+            bucket = db.get_bucket(receiver)
+            return '&<!mail-to>' + bucket + '&<!spl>' + object_name + '&<!spl>' + content + "&<!meta|msg>Sent successfully."
+        else:
+            return receiver + " does not exist."
+
+    def list_mail(self):
+        username = self.username
+        
+        header = "ID      Subject         From            Date"
+        data = ""
+        
+        results = db.select_mail(receiver = username)
+
+        idx = 1
+        for row in results:
+            data += "\r\n{}{}{}{}".format(str(idx).ljust(8, ' '), row[0].ljust(16, ' '), row[1].ljust(16, ' '), row[2][5:7]+'/'+row[2][8:10])
+            idx += 1
+        return header + data
+
+    def retr_mail(self):
+        index = int(self.argv[1])
+        username = self.username
+        mail = ''
+        results = db.select_mail(receiver = username)
+
+        if 0 < index <= len(results):
+            mail = 'Subject\t:{}\r\nFrom\t:{}\r\nDate\t:{}\r\n--\r\n'.format(results[index-1][0], results[index-1][1], results[index-1][2])
+        else:
+            return 'No such mail.'
+
+        object_name = results[index-1][3]
+
+        return '&<!retr-mail::>' + db.get_bucket(username) + '&<!spl>' + object_name + '&<!meta|msg>' + mail
+
+    def delete_mail(self):
+        index = int(self.argv[1])
+        username = self.username
+        mail = ''
+        results = db.select_mail(receiver = username)
+
+        if 0 < index <= len(results):
+            db.delete_mail(results[index-1][4])
+            return '&<!delete-mail::>' + db.get_bucket(username) + '&<!spl>' + results[index-1][3] + '&<!meta|msg>Mail deleted.'
+        else:
+            return 'No such mail.'
+
+
     def run(self):
         msg = "********************************\r\n" \
               "** Welcome to the BBS server. **\r\n" \
@@ -262,6 +343,14 @@ class ClientThread(threading.Thread):
                 msg = self.update_post() if argc >= 4 and self.logged_in else self.usage()
             elif "comment" == action:
                 msg = self.comment() if argc >= 3 and self.logged_in else self.usage()
+            elif 'mail-to' == action:
+                msg = self.mail_to() if argc >= 6 and self.logged_in else self.usage()
+            elif 'list-mail' == action:
+                msg = self.list_mail() if argc <= 2 and self.logged_in else self.usage()
+            elif 'retr-mail' == action:
+                msg = self.retr_mail() if argc == 2 and self.logged_in else self.usage()
+            elif 'delete-mail' == action:
+                msg = self.delete_mail() if argc == 2 and self.logged_in else self.usage()
 
             # msg = "% " if msg == "" else msg + "\r\n% "
 
