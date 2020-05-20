@@ -1,4 +1,4 @@
-import boto3, time
+import time
 import random, string
 import socket
 import threading
@@ -48,11 +48,9 @@ class ClientThread(threading.Thread):
         username = self.argv[1]
         email = self.argv[2]
         password = self.argv[3]
-        bucket = 'nphw0616026user' + str(time.time()) + ''.join(random.choice(string.ascii_lowercase) for i in range(8))
+        bucket = 'nphw0616026user' + str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8))
         if db.insert_user(username, email, password, bucket) == 0:
-            s3 = boto3.resource('s3')
-            s3.create_bucket(Bucket = bucket)
-            return "Register successfully."
+            return '&<!register::>' + bucket + "&<!meta|msg>Register successfully."
         else:
             return "Username is already used."
 
@@ -111,17 +109,12 @@ class ClientThread(threading.Thread):
                 content = arg if content == "" else content + " " + arg
         content = content.replace("<br>", "\r\n")
         object_name = 'post' + str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8)) + '.txt'
+        comment_object_name = 'comment' + str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8)) + '.txt'
 
         if status != 3 or boardname == "":
             return self.usage()        
-        elif db.insert_post(boardname, self.username, title, content, object_name) == 0:
-            file = open('./tmp/' + object_name, 'w')
-            file.write(content)
-            file.close()
-            s3 = boto3.resource('s3')
-            target_bucket = s3.Bucket(self.bucket)
-            target_bucket.upload_file('./tmp/' + object_name, object_name)
-            return "Create post successfully."
+        elif db.insert_post(boardname, self.username, title, object_name, comment_object_name) == 0:
+            return '&<!create-post>' + self.bucket + '&<!spl>' + object_name + '&<!spl>' + content + '&<!spl>' + comment_object_name + "&<!meta|msg>Create post successfully."
         else:
             return "Board does not exist."
 
@@ -168,18 +161,21 @@ class ClientThread(threading.Thread):
         result = db.select_post(pid = pid)
         # content = result[0][3].replace("\r\n", "\r\n    ")
         object_name = result[0][3]
+        comment_object_name = result[0][4]
         post = "Author\t:{}\r\nTitle\t:{}\r\nDate\t:{}\r\n--\r\n".format(result[0][0], result[0][1], result[0][2])      
         # comments = ""
         # results = db.select_comment(pid = pid)
         # for row in results:
         #     comments += "\r\n    {}: {}".format(row[2], row[3])
-        return '<!read::>' + db.get_bucket(result[0][0]) + '<!bucket|object>' + object_name + '<!metadata|content>' + post
+        return '&<!read::>' + db.get_bucket(result[0][0]) + '&<!spl>' + object_name + '&<!spl>' + comment_object_name + '&<!meta|msg>' + post
 
     def delete_post(self):
         pid = int(self.argv[1])
+        object_name = db.get_post_object_name(pid)
+        comment_object_name = db.get_comment_object_name(pid)
         action = db.delete_post(pid, self.username)
         if action == 0:
-            return "Delete successfully."
+            return '&<!delete-post::>' + db.get_bucket(self.username) + '&<!spl>' + object_name + '&<!spl>' + comment_object_name + '&<!meta|msg>' + "Delete successfully."
         elif action == 2:
             return "Post does not exist."
         else:
@@ -202,20 +198,27 @@ class ClientThread(threading.Thread):
             return "Update successfully."
         elif action == 2:
             return "Post does not exist."
+        elif action == 5:
+            bucket = db.get_bucket(self.username)
+            object_name = db.get_post_object_name(pid)
+            return '&<!update-post-content>' + bucket + '&<!spl>' + object_name + '&<!spl>' + change + '&<!meta|msg>Update successfully.'
         else:
             return "Not the post owner."
 
     def comment(self):
         pid = int(self.argv[1])
-        comment = ""
+        if not db.post_existed_check(pid):
+            return "Post does not exist."
+
+        comment = self.username + ":"
         argi = 2
         while argi < len(self.argv):
             comment = self.argv[argi] if comment == "" else comment + " " + self.argv[argi]
             argi += 1
-        if db.insert_comment(pid, self.username, comment) == 0:
-            return "Comment successfully."
-        else:
-            return "Post does not exist."
+        result = db.insert_comment(pid)
+        bucket = db.get_bucket(result[0])
+        comment_object_name = result[1]
+        return '&<!comment>' + bucket + '&<!spl>' + comment_object_name + '&<!spl>' + comment + '&<!meta|msg>Comment successfully.'
         
     def run(self):
         msg = "********************************\r\n" \

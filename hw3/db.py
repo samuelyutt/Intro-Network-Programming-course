@@ -1,4 +1,4 @@
-import boto3, time
+import time
 import random, string
 import sqlite3
 
@@ -20,6 +20,16 @@ def get_bucket(username):
     c = conn.cursor()
     params = (username,)
     cursor = c.execute("SELECT bucket FROM USERS u WHERE u.username == ?", params)
+    values = cursor.fetchone()
+    conn.commit()
+    conn.close()
+    return values[0]
+
+def get_comment_object_name(pid):
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    params = (pid,)
+    cursor = c.execute("SELECT cmt_object FROM POSTS p WHERE p.pid == ?", params)
     values = cursor.fetchone()
     conn.commit()
     conn.close()
@@ -61,15 +71,7 @@ def update_post(pid, username, title_or_content, change):
             conn.commit()
             conn.close()
         elif title_or_content == "--content":
-            # cursor = c.execute("UPDATE POSTS SET content = ? WHERE pid == ? AND author == ?", params)
-            bucket = get_bucket(username)
-            object_name = get_post_object_name(pid)
-            file = open('./tmp/' + object_name, 'w')
-            file.write(change)
-            file.close()
-            s3 = boto3.resource('s3')
-            target_bucket = s3.Bucket(bucket)
-            target_bucket.upload_file('./tmp/' + object_name, object_name)
+            check_err = 5
         else:
             check_err = 4
     return check_err
@@ -77,13 +79,6 @@ def update_post(pid, username, title_or_content, change):
 def delete_post(pid, username):
     check_err = modify_post_check(pid, username)
     if not check_err:
-        bucket = get_bucket(username)
-        object_name = get_post_object_name(pid)
-        s3 = boto3.resource('s3')
-        target_bucket = s3.Bucket(bucket)
-        target_object = target_bucket.Object(object_name)
-        target_object.delete()
-
         conn = sqlite3.connect('bbs.db')
         c = conn.cursor()
         params = (pid, username, )
@@ -137,8 +132,8 @@ def create_table_posts():
                 author      TEXT    NOT NULL,
                 title       TEXT    NOT NULL,
                 post_date   TEXT    NOT NULL,
-                content     TEXT    NOT NULL, 
-                object      TEXT    NOT NULL
+                object      TEXT    NOT NULL, 
+                cmt_object  TEXT    NOT NULL
             );
         ''')
         conn.commit()
@@ -202,7 +197,7 @@ def board_existed_check(boardname):
     conn.close()
     return int(values[0]) > 0
 
-def insert_post(boardname, author, title, content, object_name):
+def insert_post(boardname, author, title, object_name, comment_object_name):
     # Return 0 if successfully inserted
     if board_existed_check(boardname):
         try:
@@ -210,8 +205,8 @@ def insert_post(boardname, author, title, content, object_name):
             c = conn.cursor()
             cursor = c.execute("SELECT date('now')")
             post_date = cursor.fetchone()[0]
-            params = (boardname, author, title, post_date, content, object_name,)
-            cursor = c.execute("INSERT INTO POSTS (boardname, author, title, post_date, content, object) VALUES (?, ?, ?, ?, ?, ?)", params)
+            params = (boardname, author, title, post_date, object_name, comment_object_name)
+            cursor = c.execute("INSERT INTO POSTS (boardname, author, title, post_date, object, cmt_object) VALUES (?, ?, ?, ?, ?, ?)", params)
             conn.commit()
             conn.close()
             return 0
@@ -231,22 +226,15 @@ def post_existed_check(pid):
     conn.close()
     return int(values[0]) > 0
 
-def insert_comment(pid, user, comment):
-    # Return 0 if successfully inserted
-    if post_existed_check(pid):
-        try:
-            conn = sqlite3.connect('bbs.db')
-            c = conn.cursor()
-            params = (pid, user, comment,)
-            cursor = c.execute("INSERT INTO COMMENTS (post_id, user, comment) VALUES (?, ?, ?)", params)
-            conn.commit()
-            conn.close()
-            return 0
-        except:
-            pass
-        return -1
-    else:
-        return 2
+def insert_comment(pid):
+    conn = sqlite3.connect('bbs.db')
+    c = conn.cursor()
+    params = (pid,)
+    cursor = c.execute("SELECT author, cmt_object FROM POSTS p WHERE p.pid == ?", params)
+    ret = cursor.fetchone()
+    conn.commit()
+    conn.close()
+    return ret
 
 def select_board(key = ""):
     ret = []
@@ -280,7 +268,7 @@ def select_post(boardname = "", key = "", pid = -1):
         ret = cursor.fetchall()
     elif pid != -1:
         params = (pid,)
-        cursor = c.execute("SELECT author, title, post_date, object FROM POSTS p WHERE p.pid == ?", params)
+        cursor = c.execute("SELECT author, title, post_date, object, cmt_object FROM POSTS p WHERE p.pid == ?", params)
         ret = cursor.fetchall()
     conn.commit()
     conn.close()
