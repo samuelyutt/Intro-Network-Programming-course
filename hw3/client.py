@@ -13,7 +13,7 @@ client.connect((host, PORT))
 
 data = ''
 s3 = boto3.resource('s3')
-# while message.lower().strip() != 'bye':
+
 while data != 'exit':
 
     msg = client.recv(2048).decode()

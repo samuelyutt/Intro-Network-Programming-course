@@ -165,14 +165,9 @@ class ClientThread(threading.Thread):
 
         post = ""
         result = db.select_post(pid = pid)
-        # content = result[0][3].replace("\n", "\n    ")
         object_name = result[0][3]
         comment_object_name = result[0][4]
-        post = "Author\t:{}\nTitle\t:{}\nDate\t:{}\n--\n".format(result[0][0], result[0][1], result[0][2])      
-        # comments = ""
-        # results = db.select_comment(pid = pid)
-        # for row in results:
-        #     comments += "\n    {}: {}".format(row[2], row[3])
+        post = "Author\t:{}\nTitle\t:{}\nDate\t:{}\n--\n".format(result[0][0], result[0][1], result[0][2])  
         return '&<!read::>' + db.get_bucket(result[0][0]) + '&<!spl>' + object_name + '&<!spl>' + comment_object_name + '&<!meta|msg>' + post
 
     def delete_post(self):
