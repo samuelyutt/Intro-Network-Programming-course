@@ -33,7 +33,10 @@ def get_comment_object_name(pid):
     values = cursor.fetchone()
     conn.commit()
     conn.close()
-    return values[0]
+    if values:
+        return values[0]
+    else:
+        return None
 
 def get_post_object_name(pid):
     conn = sqlite3.connect('bbs.db')
@@ -43,7 +46,10 @@ def get_post_object_name(pid):
     values = cursor.fetchone()
     conn.commit()
     conn.close()
-    return values[0]
+    if values:
+        return values[0]
+    else:
+        return None
 
 def modify_post_check(pid, username):
     conn = sqlite3.connect('bbs.db')

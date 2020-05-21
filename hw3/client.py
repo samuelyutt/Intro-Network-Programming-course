@@ -16,7 +16,7 @@ s3 = boto3.resource('s3')
 # while message.lower().strip() != 'bye':
 while data != 'exit':
 
-    msg = client.recv(1024).decode()
+    msg = client.recv(2048).decode()
     if '&<!register::>' in msg:
         msg = msg.split('&<!register::>')[1]
         metadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
@@ -25,8 +25,8 @@ while data != 'exit':
         bucket = metadata[0]
         
         s3.create_bucket(Bucket = bucket)
-    elif '&<!create-post>' in msg:
-        msg = msg.split('&<!create-post>')[1]
+    elif '&<!create-post::>' in msg:
+        msg = msg.split('&<!create-post::>')[1]
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
         msg = msg.split('&<!meta|msg>')[1]
 
@@ -46,8 +46,8 @@ while data != 'exit':
         file.close()
         target_bucket = s3.Bucket(bucket)
         target_bucket.upload_file('./tmp/' + comment_object_name, comment_object_name)
-    elif '&<!update-post-content>' in msg:
-        msg = msg.split('&<!update-post-content>')[1]
+    elif '&<!update-post-content::>' in msg:
+        msg = msg.split('&<!update-post-content::>')[1]
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
         msg = msg.split('&<!meta|msg>')[1]
 
@@ -93,8 +93,9 @@ while data != 'exit':
         target_object = target_bucket.Object(comment_object_name)
         object_content = target_object.get()['Body'].read().decode()
         msg += object_content
-    elif '&<!comment>' in msg:
-        msg = msg.split('&<!comment>')[1]
+        msg = '\t' + msg.replace("\n", "\n\t")
+    elif '&<!comment::>' in msg:
+        msg = msg.split('&<!comment::>')[1]
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
         msg = msg.split('&<!meta|msg>')[1]
 
@@ -110,8 +111,8 @@ while data != 'exit':
         file.close()
         target_bucket = s3.Bucket(bucket)
         target_bucket.upload_file('./tmp/' + comment_object_name, comment_object_name)
-    elif '&<!mail-to>' in msg:
-        msg = msg.split('&<!mail-to>')[1]
+    elif '&<!mail-to::>' in msg:
+        msg = msg.split('&<!mail-to::>')[1]
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
         msg = msg.split('&<!meta|msg>')[1]
 
@@ -136,6 +137,7 @@ while data != 'exit':
         target_object = target_bucket.Object(object_name)
         object_content = target_object.get()['Body'].read().decode()
         msg += object_content
+        msg = '\t' + msg.replace("\n", "\n\t")
     elif '&<!delete-mail::>' in msg:
         msg = msg.split('&<!delete-mail::>')[1]
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')

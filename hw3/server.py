@@ -18,7 +18,7 @@ server.bind((host, PORT))
 print("Server started on", host, "using port", PORT)
 
 while True:
-    server.listen(5)
+    server.listen(10)
     c_socket, c_address = server.accept()
     new_connection = ClientThread(c_socket, c_address)
     new_connection.start()

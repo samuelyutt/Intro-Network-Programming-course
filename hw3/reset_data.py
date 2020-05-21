@@ -20,10 +20,10 @@ def delete_post():
         target_object = target_bucket.Object(row[2])
         target_object.delete()
 
-    print('Deleting post from database')
+    print('Deleting table post from database')
     conn = sqlite3.connect('bbs.db')
     c = conn.cursor()
-    cursor = c.execute("DELETE FROM POSTS")
+    cursor = c.execute("DROP TABLE POSTS")
     conn.commit()
     conn.close()
 
@@ -44,10 +44,10 @@ def delete_mail():
         target_object = target_bucket.Object(row[1])
         target_object.delete()
 
-    print('Deleting mail from database')
+    print('Deleting table mail from database')
     conn = sqlite3.connect('bbs.db')
     c = conn.cursor()
-    cursor = c.execute("DELETE FROM MAILS")
+    cursor = c.execute("DROP TABLE MAILS")
     conn.commit()
     conn.close()
 
@@ -65,18 +65,18 @@ def delete_user():
         target_bucket = s3.Bucket(row[0])
         target_bucket.delete()
 
-    print('Deleting user from database')
+    print('Deleting table user from database')
     conn = sqlite3.connect('bbs.db')
     c = conn.cursor()
-    cursor = c.execute("DELETE FROM USERS")
+    cursor = c.execute("DROP TABLE USERS")
     conn.commit()
     conn.close()
 
 def delete_board():
-    print('Deleting board from database')
+    print('Deleting table board from database')
     conn = sqlite3.connect('bbs.db')
     c = conn.cursor()
-    cursor = c.execute("DELETE FROM BOARDS")
+    cursor = c.execute("DROP TABLE BOARDS")
     conn.commit()
     conn.close()
 

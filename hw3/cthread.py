@@ -70,7 +70,7 @@ class ClientThread(threading.Thread):
                 self.logged_in = True
                 self.username = username
                 self.bucket = db.get_bucket(username)
-                return "Welcome, " + self.username + "." + self.bucket
+                return "Welcome, " + self.username + "."
             else:
                 return "Login failed."
 
@@ -79,7 +79,7 @@ class ClientThread(threading.Thread):
         self.logged_in = False
         self.username = ""
         self.bucket = ''
-        return "Bye, " + username
+        return "Bye, " + username + '.'
 
     def whoami(self):
         return self.username
@@ -113,19 +113,19 @@ class ClientThread(threading.Thread):
                     title = arg if title == "" else title + " " + arg
             elif 3 == status:
                 content = arg if content == "" else content + " " + arg
-        content = content.replace("<br>", "\r\n")
+        content = content.replace("<br>", "\n")
         object_name = 'post' + str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8)) + '.txt'
         comment_object_name = 'comment' + str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8)) + '.txt'
 
         if status != 3 or boardname == "":
             return self.usage()        
         elif db.insert_post(boardname, self.username, title, object_name, comment_object_name) == 0:
-            return '&<!create-post>' + self.bucket + '&<!spl>' + object_name + '&<!spl>' + content + '&<!spl>' + comment_object_name + "&<!meta|msg>Create post successfully."
+            return '&<!create-post::>' + self.bucket + '&<!spl>' + object_name + '&<!spl>' + content + '&<!spl>' + comment_object_name + "&<!meta|msg>Create post successfully."
         else:
             return "Board does not exist."
 
     def list_board(self):
-        header = "    Index   Name            Moderator"
+        header = "\tIndex\tName\tModerator"
         data = ""
         key = ""
         if len(self.argv) == 2:
@@ -136,7 +136,7 @@ class ClientThread(threading.Thread):
         results = db.select_board(key)
         i = 1
         for row in results:
-            data += "\r\n    {}{}{}".format(str(i).ljust(8, ' '), row[2].ljust(16, ' '), row[1])
+            data += "\n\t{}\t{}\t{}".format(i, row[2], row[1])
             i += 1
         return header + data
 
@@ -145,7 +145,7 @@ class ClientThread(threading.Thread):
         if not db.board_existed_check(boardname):
             return "Board does not exist."
         
-        header = "ID      Title           Author          Date"
+        header = "\tID\tTitle\tAuthor\tDate"
         data = ""
         key = ""
         if len(self.argv) == 3:
@@ -155,7 +155,7 @@ class ClientThread(threading.Thread):
                 return self.usage()
         results = db.select_post(boardname = boardname, key = key)
         for row in results:
-            data += "\r\n{}{}{}{}".format(str(row[0]).ljust(8, ' '), row[1].ljust(16, ' '), row[2].ljust(16, ' '), row[3][5:7]+'/'+row[3][8:10])
+            data += "\n\t{}\t{}\t{}\t{}".format(row[0], row[1], row[2], row[3][5:7]+'/'+row[3][8:10])
         return header + data
 
     def read_post(self):
@@ -165,14 +165,14 @@ class ClientThread(threading.Thread):
 
         post = ""
         result = db.select_post(pid = pid)
-        # content = result[0][3].replace("\r\n", "\r\n    ")
+        # content = result[0][3].replace("\n", "\n    ")
         object_name = result[0][3]
         comment_object_name = result[0][4]
-        post = "Author\t:{}\r\nTitle\t:{}\r\nDate\t:{}\r\n--\r\n".format(result[0][0], result[0][1], result[0][2])      
+        post = "Author\t:{}\nTitle\t:{}\nDate\t:{}\n--\n".format(result[0][0], result[0][1], result[0][2])      
         # comments = ""
         # results = db.select_comment(pid = pid)
         # for row in results:
-        #     comments += "\r\n    {}: {}".format(row[2], row[3])
+        #     comments += "\n    {}: {}".format(row[2], row[3])
         return '&<!read::>' + db.get_bucket(result[0][0]) + '&<!spl>' + object_name + '&<!spl>' + comment_object_name + '&<!meta|msg>' + post
 
     def delete_post(self):
@@ -198,7 +198,7 @@ class ClientThread(threading.Thread):
         if title_or_content != "--title" and title_or_content != "--content":
             return self.usage()
         elif title_or_content == "--content":
-            change = change.replace("<br>", "\r\n")
+            change = change.replace("<br>", "\n")
         action = db.update_post(pid, self.username, title_or_content, change)
         if action == 0:
             return "Update successfully."
@@ -207,7 +207,7 @@ class ClientThread(threading.Thread):
         elif action == 5:
             bucket = db.get_bucket(self.username)
             object_name = db.get_post_object_name(pid)
-            return '&<!update-post-content>' + bucket + '&<!spl>' + object_name + '&<!spl>' + change + '&<!meta|msg>Update successfully.'
+            return '&<!update-post-content::>' + bucket + '&<!spl>' + object_name + '&<!spl>' + change + '&<!meta|msg>Update successfully.'
         else:
             return "Not the post owner."
 
@@ -219,12 +219,12 @@ class ClientThread(threading.Thread):
         comment = self.username + ":"
         argi = 2
         while argi < len(self.argv):
-            comment = self.argv[argi] if comment == "" else comment + " " + self.argv[argi]
+            comment += (" " + self.argv[argi]) if comment != self.username + ":" else self.argv[argi]
             argi += 1
         result = db.insert_comment(pid)
         bucket = db.get_bucket(result[0])
         comment_object_name = result[1]
-        return '&<!comment>' + bucket + '&<!spl>' + comment_object_name + '&<!spl>' + comment + '&<!meta|msg>Comment successfully.'
+        return '&<!comment::>' + bucket + '&<!spl>' + comment_object_name + '&<!spl>' + comment + '&<!meta|msg>Comment successfully.'
         
     def mail_to(self):
         receiver = ""
@@ -248,28 +248,28 @@ class ClientThread(threading.Thread):
                     subject = arg if subject == "" else subject + " " + arg
             elif 3 == status:
                 content = arg if content == "" else content + " " + arg
-        content = content.replace("<br>", "\r\n")
+        content = content.replace("<br>", "\n")
         object_name = 'mail' + str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8)) + '.txt'
 
         if status != 3 or receiver == "":
             return self.usage()        
         elif db.insert_mail(self.username, receiver, subject, object_name) == 0:
             bucket = db.get_bucket(receiver)
-            return '&<!mail-to>' + bucket + '&<!spl>' + object_name + '&<!spl>' + content + "&<!meta|msg>Sent successfully."
+            return '&<!mail-to::>' + bucket + '&<!spl>' + object_name + '&<!spl>' + content + "&<!meta|msg>Sent successfully."
         else:
             return receiver + " does not exist."
 
     def list_mail(self):
         username = self.username
         
-        header = "ID      Subject         From            Date"
+        header = "\tID\tSubject\tFrom\tDate"
         data = ""
         
         results = db.select_mail(receiver = username)
 
         idx = 1
         for row in results:
-            data += "\r\n{}{}{}{}".format(str(idx).ljust(8, ' '), row[0].ljust(16, ' '), row[1].ljust(16, ' '), row[2][5:7]+'/'+row[2][8:10])
+            data += "\n\t{}\t{}\t{}\t{}".format(idx, row[0], row[1], row[2][5:7]+'/'+row[2][8:10])
             idx += 1
         return header + data
 
@@ -280,7 +280,7 @@ class ClientThread(threading.Thread):
         results = db.select_mail(receiver = username)
 
         if 0 < index <= len(results):
-            mail = 'Subject\t:{}\r\nFrom\t:{}\r\nDate\t:{}\r\n--\r\n'.format(results[index-1][0], results[index-1][1], results[index-1][2])
+            mail = 'Subject\t:{}\nFrom\t:{}\nDate\t:{}\n--\n'.format(results[index-1][0], results[index-1][1], results[index-1][2])
         else:
             return 'No such mail.'
 
@@ -302,16 +302,14 @@ class ClientThread(threading.Thread):
 
 
     def run(self):
-        msg = "********************************\r\n" \
-              "** Welcome to the BBS server. **\r\n" \
-              "********************************"
+        msg = "********************************\n** Welcome to the BBS server. **\n********************************"
         self.c_socket.send(bytes(msg,'UTF-8'))
         
         while True:
             msg = " "
             data = self.c_socket.recv(2048)
             user_input = data.decode()
-            # self.argv = re.split(" |\r\n", user_input)
+            # self.argv = re.split(" |\n", user_input)
             self.argv = user_input.split()
             argc = len(self.argv)
             action = self.argv[0] if argc > 0 else ""
@@ -352,6 +350,6 @@ class ClientThread(threading.Thread):
             elif 'delete-mail' == action:
                 msg = self.delete_mail() if argc == 2 and self.logged_in else self.usage()
 
-            # msg = "% " if msg == "" else msg + "\r\n% "
+            # msg = "% " if msg == "" else msg + "\n% "
 
             self.c_socket.send(bytes(msg,'UTF-8'))
