@@ -145,7 +145,7 @@ class ClientThread(threading.Thread):
         if not db.board_existed_check(boardname):
             return "Board does not exist."
         
-        header = "    ID      Title           Author          Date"
+        header = "ID      Title           Author          Date"
         data = ""
         key = ""
         if len(self.argv) == 3:
@@ -155,7 +155,7 @@ class ClientThread(threading.Thread):
                 return self.usage()
         results = db.select_post(boardname = boardname, key = key)
         for row in results:
-            data += "\r\n    {}{}{}{}".format(str(row[0]).ljust(8, ' '), row[1].ljust(16, ' '), row[2].ljust(16, ' '), row[3][5:7]+'/'+row[3][8:10])
+            data += "\r\n{}{}{}{}".format(str(row[0]).ljust(8, ' '), row[1].ljust(16, ' '), row[2].ljust(16, ' '), row[3][5:7]+'/'+row[3][8:10])
         return header + data
 
     def read_post(self):

@@ -324,18 +324,6 @@ def select_mail(receiver = ""):
     conn.close()
     return ret
 
-def select_comment(pid):    
-    ret = []
-    conn = sqlite3.connect('bbs.db')
-    c = conn.cursor()    
-    params = (pid,)
-    cursor = c.execute("SELECT * FROM COMMENTS WHERE post_id = ?", params)        
-    ret = cursor.fetchall()
-    conn.commit()
-    conn.close()
-    return ret
-
-
 def test():
     conn = sqlite3.connect('bbs.db')
     c = conn.cursor()
@@ -349,18 +337,6 @@ def test():
     cursor = c.execute("SELECT * FROM BOARDS")
     for a in cursor:
         print(a)
-
-    print("POSTS")
-    cursor = c.execute("SELECT * FROM POSTS")
-    for a in cursor:
-        print(a)
-        conn2 = sqlite3.connect('bbs.db')
-        c2 = conn2.cursor()
-        cursor2 = c2.execute("SELECT * FROM COMMENTS WHERE post_id = ?", (a[0],))
-        for b in cursor2:
-            print("    ", b)
-        conn2.commit()
-        conn2.close()
 
     conn.commit()
     conn.close()
