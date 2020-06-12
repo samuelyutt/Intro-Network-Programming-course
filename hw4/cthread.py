@@ -48,6 +48,10 @@ class ClientThread(threading.Thread):
             return 'Usage: retr-mail <mail#>'
         elif 'delete-mail' == action:
             return 'Usage: delete-mail <mail#>'
+        elif 'subscribe' == action:
+            return 'Usage: subscribe --board <board-name> --keyword <keyword>\n       subscribe --author <author-name> --keyword <keyword>'
+        elif 'unsubscribe' == action:
+            return 'Usage: unsubscribe --board <board-name>\n       unsubscribe --author <author-name>'
         return ""
 
     def regisiter(self):
@@ -295,6 +299,34 @@ class ClientThread(threading.Thread):
         else:
             return 'No such mail.'
 
+    def subscribe(self):
+        keyword = ''
+        subscribtion = ''
+        if self.argv[3] == '--keyword':
+            keyword = self.argv[4]
+        else:
+            return self.usage()
+        if self.argv[1] == '--board':
+            subscribtion = self.argv[2]
+            return '&<!subscribe-board::>' + subscribtion + '&<!spl>' + keyword + '&<!meta|msg>'
+        elif self.argv[1] == '--author':
+            subscribtion = self.argv[2]
+            return '&<!subscribe-author::>' + subscribtion + '&<!spl>' + keyword + '&<!meta|msg>'
+        return self.usage()
+
+    def unsubscribe(self):
+        subscribtion = ''
+        if self.argv[1] == '--board':
+            subscribtion = self.argv[2]
+            return '&<!unsubscribe-board::>' + subscribtion + '&<!meta|msg>'
+        elif self.argv[1] == '--author':
+            subscribtion = self.argv[2]
+            return '&<!unsubscribe-author::>' + subscribtion + '&<!meta|msg>'
+        return self.usage()
+
+    def list_sub(self):
+        return '&<!list-sub::>&<!meta|msg>'
+
 
     def run(self):
         msg = "********************************\n** Welcome to the BBS server. **\n********************************"
@@ -344,6 +376,12 @@ class ClientThread(threading.Thread):
                 msg = self.retr_mail() if argc == 2 and self.logged_in else self.usage()
             elif 'delete-mail' == action:
                 msg = self.delete_mail() if argc == 2 and self.logged_in else self.usage()
+            elif 'subscribe' == action:
+                msg = self.subscribe() if argc == 5 and self.logged_in else self.usage()
+            elif 'unsubscribe' == action:
+                msg = self.unsubscribe() if argc == 3 and self.logged_in else self.usage()
+            elif 'list-sub' == action:
+                msg = self.list_sub() if self.logged_in else self.usage()
 
             # msg = "% " if msg == "" else msg + "\n% "
 

@@ -1,5 +1,20 @@
 import sys, socket
 import boto3
+import string
+import threading
+import time
+from kafka import KafkaConsumer
+
+topic = []
+keywords = {}
+
+def consume():
+    consumer = KafkaConsumer(group_id=str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8)), bootstrap_servers=['localhost:9092'])
+    while True:
+        consumer.subscribe(topics=topic)
+        msg = consumer.poll(5)
+        if msg:
+            print(msg)
 
 
 PORT = 7788  # socket server port number
@@ -149,6 +164,69 @@ while data != 'exit':
         target_bucket = s3.Bucket(bucket)
         target_object = target_bucket.Object(object_name)
         target_object.delete()
+    elif '&<!subscribe-board::>' in msg:
+        msg = msg.split('&<!subscribe-board::>')[1]
+        matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
+        msg = msg.split('&<!meta|msg>')[1]
+
+        subscription = '&<!board->' + matadata[0]
+        keyword = matadata[1]
+
+        if subscription in keywords and keyword in keywords[subscription]:
+            msg = 'Already subscribed'
+        else:
+            if subscription in topic:
+                keywords[subscription].append(keyword)
+            else:
+                topic.append(subscription)
+                keywords[subscription] = [keyword]
+            msg = 'Subscribe successfully'
+    elif '&<!subscribe-author::>' in msg:
+        msg = msg.split('&<!subscribe-author::>')[1]
+        matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
+        msg = msg.split('&<!meta|msg>')[1]
+
+        subscription = '&<!author->' + matadata[0]
+        keyword = matadata[1]
+
+        if subscription in keywords and keyword in keywords[subscription]:
+            msg = 'Already subscribed'
+        else:
+            if subscription in topic:
+                keywords[subscription].append(keyword)
+            else:
+                topic.append(subscription)
+                keywords[subscription] = [keyword]
+            msg = 'Subscribe successfully'
+    elif '&<!unsubscribe-board::>' in msg:
+        msg = msg.split('&<!unsubscribe-board::>')[1]
+        matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
+        msg = msg.split('&<!meta|msg>')[1]
+
+        subscription = '&<!board->' + matadata[0]
+
+        if subscription not in topic:
+            msg = 'You haven\'t subscribed ' + matadata[0]
+        else:
+            topic.remove(subscription)
+            keywords.pop(subscription, None)
+            msg = 'Unsubscribe successfully'
+    elif '&<!unsubscribe-author::>' in msg:
+        msg = msg.split('&<!unsubscribe-author::>')[1]
+        matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
+        msg = msg.split('&<!meta|msg>')[1]
+
+        subscription = '&<!author->' + matadata[0]
+
+        if subscription not in topic:
+            msg = 'You haven\'t subscribed ' + matadata[0]
+        else:
+            topic.remove(subscription)
+            keywords.pop(subscription, None)
+            msg = 'Unsubscribe successfully'
+    elif '&<!list-sub::>' in msg:
+        print(topic)
+        print(keywords)
     
     if msg != ' ':
         print(msg)
