@@ -4,6 +4,7 @@ import socket
 import threading
 import re
 import db
+from kafka import KafkaProducer
 
 class ClientThread(threading.Thread):
     def __init__(self, c_socket_, c_address_):
@@ -124,6 +125,9 @@ class ClientThread(threading.Thread):
         if status != 3 or boardname == "":
             return self.usage()        
         elif db.insert_post(boardname, self.username, title, object_name, comment_object_name) == 0:
+            producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
+            future = producer.send('._-board-' + boardname, key=title.encode(), value=(boardname + '&<!spl>' + self.username).encode())
+            future = producer.send('._-author-' + self.username, key=title.encode(), value=(boardname + '&<!spl>' + self.username).encode())
             return '&<!create-post::>' + self.bucket + '&<!spl>' + object_name + '&<!spl>' + content + '&<!spl>' + comment_object_name + "&<!meta|msg>Create post successfully."
         else:
             return "Board does not exist."

@@ -4,6 +4,7 @@ import string
 import threading
 import time
 from kafka import KafkaConsumer
+import random
 
 topic = []
 keywords = {}
@@ -11,10 +12,31 @@ keywords = {}
 def consume():
     consumer = KafkaConsumer(group_id=str(int(time.time())) + ''.join(random.choice(string.ascii_lowercase) for i in range(8)), bootstrap_servers=['localhost:9092'])
     while True:
-        consumer.subscribe(topics=topic)
-        msg = consumer.poll(5)
-        if msg:
-            print(msg)
+        if len(topic):
+            consumer.subscribe(topics=topic)
+            msg = consumer.poll(5)
+            if msg:
+                # print(msg)
+                key, value = '', ''
+                for _ in msg.values():
+                    for record in _:
+                        this_topic = record.topic
+                        key = record.key.decode()
+                        value = record.value.decode()
+                title = key
+                boardname = value.split('&<!spl>')[0]
+                author = value.split('&<!spl>')[1]
+
+                # print(title, boardname, author)
+                # print(keywords[this_topic])
+
+                need_print = False
+                for k in keywords[this_topic]:
+                    if k in title:
+                        need_print = True
+                        break
+                if need_print:
+                    print('*[' + boardname + '] ' + title + ' - by ' + author + '*\n% ', end = '')
 
 
 PORT = 7788  # socket server port number
@@ -28,6 +50,10 @@ client.connect((host, PORT))
 
 data = ''
 s3 = boto3.resource('s3')
+
+t = threading.Thread(target=consume)
+t.daemon = True
+t.start()
 
 while data != 'exit':
 
@@ -169,7 +195,7 @@ while data != 'exit':
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
         msg = msg.split('&<!meta|msg>')[1]
 
-        subscription = '&<!board->' + matadata[0]
+        subscription = '._-board-' + matadata[0]
         keyword = matadata[1]
 
         if subscription in keywords and keyword in keywords[subscription]:
@@ -186,7 +212,7 @@ while data != 'exit':
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
         msg = msg.split('&<!meta|msg>')[1]
 
-        subscription = '&<!author->' + matadata[0]
+        subscription = '._-author-' + matadata[0]
         keyword = matadata[1]
 
         if subscription in keywords and keyword in keywords[subscription]:
@@ -203,7 +229,7 @@ while data != 'exit':
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
         msg = msg.split('&<!meta|msg>')[1]
 
-        subscription = '&<!board->' + matadata[0]
+        subscription = '._-board-' + matadata[0]
 
         if subscription not in topic:
             msg = 'You haven\'t subscribed ' + matadata[0]
@@ -216,7 +242,7 @@ while data != 'exit':
         matadata = msg.split('&<!meta|msg>')[0].split('&<!spl>')
         msg = msg.split('&<!meta|msg>')[1]
 
-        subscription = '&<!author->' + matadata[0]
+        subscription = '._-author-' + matadata[0]
 
         if subscription not in topic:
             msg = 'You haven\'t subscribed ' + matadata[0]
@@ -225,12 +251,61 @@ while data != 'exit':
             keywords.pop(subscription, None)
             msg = 'Unsubscribe successfully'
     elif '&<!list-sub::>' in msg:
-        print(topic)
-        print(keywords)
+        # print(topic)
+        # print(keywords)
+        board_list = {}
+        author_list = {}
+        for key in keywords:
+            if '._-board' in key:
+                boardname = key[9:]
+                if boardname in board_list:
+                    board_list[boardname] + keywords[key]
+                else:
+                    board_list[boardname] = keywords[key]
+            elif '._-author' in key:
+                author = key[10:]
+                if author in author_list:
+                    author_list[author] + keywords[key]
+                else:
+                    author_list[author] = keywords[key]
+        # print(board_list)
+        # print(author_list)
+        count = 0
+        for key in board_list:
+            if count == 0:
+                print('Board: ', end = '')
+            print(key, end = ': ')
+            tmp_count = 0
+            for kw in board_list[key]:
+                if tmp_count > 0:
+                    print(', ', end = '')
+                print(kw, end = '')
+                tmp_count += 1
+            print('; ', end = '')
+            count += 1
+        if count > 0:
+            print()
+        count = 0
+        for key in author_list:
+            if count == 0:
+                print('Author: ', end = '')
+            print(key, end = ': ')
+            tmp_count = 0
+            for kw in author_list[key]:
+                if tmp_count > 0:
+                    print(', ', end = '')
+                print(kw, end = '')
+                tmp_count += 1
+            print('; ', end = '')
+            count += 1
+        if count > 0:
+            print()
+        msg = ' '
     
     if msg != ' ':
         print(msg)
-    
+    # print(topic)
+    # print(keywords)
     print('% ', end='')
     data = input()
     data = data if data else ' '
